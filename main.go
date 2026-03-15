@@ -113,16 +113,27 @@ func main() {
 				})
 			}
 
-			resp, err := resty.New().R().
+			client := resty.New()
+			resp, err := client.R().
 				SetHeader("Content-Type", "application/json").
 				SetBasicAuth(appContext.flags.AuthUSER, appContext.flags.AuthPASS).
 				SetBody(jsonData).
 				Post(*flagWebhook)
+
 			if err != nil {
-				log.Println(err)
+				log.Printf("webhook request error: %v\n", err)
 				return errors.New("E1: Cannot accept your message due to internal error, please report that to our engineers")
-			} else if resp.StatusCode() != 200 {
-				log.Println(resp.Status())
+			}
+
+			if resp.StatusCode() != 200 {
+				body := ""
+				if resp.RawResponse != nil {
+					b, _ := ioutil.ReadAll(resp.RawResponse.Body)
+					body = string(b)
+				} else {
+					body = resp.String()
+				}
+				log.Printf("webhook returned non-200: %d %s\nResponse body: %s\n", resp.StatusCode(), resp.Status(), body)
 				return errors.New("E2: Cannot accept your message due to internal error, please report that to our engineers")
 			}
 
